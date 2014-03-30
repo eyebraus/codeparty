@@ -1,0 +1,42 @@
+{
+    "name": "codeparty",
+    "version": "0.1.0",
+
+    "author": "eyebraus <whalesonstilts2012@gmail.com>",
+    "contributors": [
+        {
+            "name": "Sean Brennan",
+            "email": "whalesonstilts2012@gmail.com"
+        }
+    ],
+    "description": "CODE PARTY WOOOOOOO",
+    "license": "MIT",
+    "private": true,
+    "scripts": {
+        "start": "node app"
+    },
+
+    "dependencies": {
+        "backbone": "1.1.x",
+        "cradle": "0.6.x",
+        "express": "3.4.x",
+        "jade": "1.0.x",
+        "socket.io": "0.9.x",
+        "stylus": "0.38.x",
+        "underscore": "1.5.x",
+        "vargs": "0.1.x"
+    },
+    "devDependencies": {
+        "grunt": "0.4.x",
+        "grunt-contrib-watch": "0.5.x",
+        "grunt-develop": "0.2.x",
+        "load-grunt-tasks": "0.2.x",
+        "mocha": "1.13.x",
+        "request": "2.27.x",
+        "should": "2.0.x",
+        "time-grunt": "0.1.x"
+    },
+    "engines": {
+        "node": ">=0.10"
+    }
+}
