@@ -28,6 +28,7 @@
         "vargs": "0.1.x"
     },
     "devDependencies": {
+        "bower": "1.3.x",
         "grunt": "0.4.x",
         "grunt-contrib-watch": "0.5.x",
         "grunt-develop": "0.2.x",
