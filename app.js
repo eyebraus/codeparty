@@ -18,6 +18,12 @@ var express = require('express')
         app.use(express.logger('dev'));
         app.use(express.bodyParser());
         app.use(express.methodOverride());
+        app.use(express.cookieParser());
+        if (process.env.APP_CODEPARTY_SECRET) {
+            app.use(express.session({ secret: process.env.APP_CODEPARTY_SECRET }));
+        } else {
+            app.use(express.session());
+        }
         app.use(app.router);
         app.use(express.static(path.join(__dirname, 'public')));
     });
