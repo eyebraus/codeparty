@@ -4,8 +4,11 @@
  */
 
 var express = require('express')
+  , file = require('./routes/file')
   , http = require('http')
-  , path = require('path');
+  , index = require('./routes/index')
+  , path = require('path')
+  , stylus = require('stylus');
 
 (function () {
     var app = express();
@@ -24,9 +27,21 @@ var express = require('express')
         } else {
             app.use(express.session());
         }
+        app.use(stylus.middleware({
+            src: path.join(__dirname, 'public'),
+            compile: function (str, path) {
+                return stylus(str)
+                 .set('filename', path);
+            }
+        }));
         app.use(app.router);
         app.use(express.static(path.join(__dirname, 'public')));
     });
+
+    // app routes
+    app.get('/', index);
+    app.get('/index', index);
+    app.get('/static-file-service', file);
 
     app.configure('development', function () {
         app.use(express.errorHandler());
