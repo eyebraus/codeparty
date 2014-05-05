@@ -20,6 +20,7 @@ module.exports = function (req, res) {
 
             res.send({
                 name: filename,
+                language: 'c++',
                 content: data
             });
         });
