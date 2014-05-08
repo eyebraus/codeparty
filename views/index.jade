@@ -23,7 +23,7 @@ html(lang="en")
         .container
             #app-header.twelve.columns.row.offset-by-two
                 h1 codeparty!
-                h4 <file>
+                h4= name
 
             hr
 
@@ -31,4 +31,4 @@ html(lang="en")
                 .code-frame
                     .code-content
                         pre
-                            .code
+                            .code!= content
