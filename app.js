@@ -41,7 +41,6 @@ var express = require('express')
     // app routes
     app.get('/', index);
     app.get('/index', index);
-    app.get('/static-file-service', file);
 
     app.configure('development', function () {
         app.use(express.errorHandler());
