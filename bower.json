@@ -6,5 +6,11 @@
         "**/.*",
         "node_modules",
         "public/components"
-    ]
+    ],
+
+    "dependencies": {
+        "jquery": "2.0.x",
+        "requirejs": "2.1.x",
+        "underscore": "1.6.x"
+    }
 }
