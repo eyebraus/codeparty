@@ -13,6 +13,7 @@ require([
     function ($, _, highlight) {
         // mostly for easily mapping text content to the raw HTML
         var Line = function (element) {
+            var self = this;
             this.element = element;
             this.html = element.html();
             this.text = element.text();
@@ -21,15 +22,15 @@ require([
 
             var tiles = _.without(this.html.split(Line.htmlSplitRegex), '');
             _.each(tiles, function (tile) {
-                var htmlIndex = this.html.indexOf(tile)
-                  , textIndex = this.text.indexOf(tile);
+                var htmlIndex = self.html.indexOf(tile)
+                  , textIndex = self.text.indexOf(_.unescape(tile));
 
-                this.htmlToText[htmlIndex] = textIndex;
-                this.textToHtml[textIndex] = htmlIndex;
+                self.htmlToText[htmlIndex] = textIndex;
+                self.textToHtml[textIndex] = htmlIndex;
             });
         };
 
-        Line.htmlSplitRegex = /(<span(\s+([\w-]+="([^"\s]*\s*)+")?)*>)|(<\/span>)/g; 
+        Line.htmlSplitRegex = /(?:<span(?:\s+(?:[\w-]+="(?:[^"\s]*\s*)+")?)*>)|(?:<\/span>)|(?:&[a-z]+;)/g; 
 
         Line.prototype.getTextIndex = function (htmlIndex) {
             var htmlIndexes = _.keys(this.htmlToText)
@@ -52,7 +53,7 @@ require([
         };
 
         Line.prototype.getHtmlIndex = function (textIndex) {
-            var textIndexes = _.key(this.textToHtml)
+            var textIndexes = _.keys(this.textToHtml)
               , lastIndex = -1
               , baseIndex = -1
               , htmlBaseIndex = -1;
@@ -105,36 +106,64 @@ require([
                             // we must wrap the interior of the child element, as well as the
                             // remainder in .line.
 
-                            if (element.get(0) === startLine.get(0)) {
-                                if (element.get(0) === range.startContainer) {
-                                    // selection site is the line, and we can just wrap naively
-                                    var selectedHtml = line.html.substring(
-                                            line.textToHtml(range.startOffset))
-                                      , unselectedHtml = line.html.substring(
-                                            line.textToHtml(0),
-                                            line.textToHtml(range.startOffset));
+                            if (element.get(0) === startLine.get(0) || element.get(0) === endLine.get(0)) {
+                                var startContainer = $(range.startContainer)
+                                  , endContainer = $(range.endContainer)
+                                  , lineTextStartPoint = 0
+                                  , lineTextEndPoint = line.text.length
+                                  , startContainerStartPoint = line.getHtmlIndex(0)
+                                  , startContainerEndPoint = line.getHtmlIndex(0)
+                                  , endContainerStartPoint = line.getHtmlIndex(line.text.length - 1) + 1
+                                  , endContainerEndPoint = line.getHtmlIndex(line.text.length - 1) + 1
+                                  , infillStartPoint = startContainerEndPoint
+                                  , infillEndPoint = endContainerStartPoint;
 
-                                    element.html(unselectedHtml);
-                                    element.append(openTag + selectedHtml + closeTag);
-                                } else {
-                                    // fuck, now we actually gotta do work
-
+                                if (element.get(0) === startLine.get(0)) {
+                                    var startContainerSubstring = startContainer.text().substring(range.startOffset);
+                                    lineTextStartPoint = line.text.indexOf(startContainerSubstring);
+                                    startContainerStartPoint = line.getHtmlIndex(lineTextStartPoint);
+                                    startContainerEndPoint = line.getHtmlIndex(lineTextStartPoint + startContainerSubstring.length - 1) + 1;
+                                    infillStartPoint = line.getHtmlIndex(lineTextStartPoint + startContainerSubstring.length);
                                 }
-                            } else if (element.get(0) === endLine.get(0)) {
-                                if (element.get(0) === range.endContainer) {
-                                    // selection site is the line, and we can just wrap naively
-                                    var selectedHtml = line.html.substring(
-                                            line.textToHtml(0),
-                                            line.textToHtml(range.endOffset))
-                                      , unselectedHtml = line.html.substring(
-                                            line.textToHtml(range.endOffset));
 
-                                    element.html(unselectedHtml);
-                                    element.prepend(openTag + selectedHtml + closeTag);
-                                } else {
-                                    // fuck, now we actually gotta do work
-
+                                if (element.get(0) === endLine.get(0)) {
+                                    var endContainerSubstring = endContainer.text().substring(0, range.endOffset);
+                                    lineTextEndPoint = line.text.indexOf(endContainerSubstring) + endContainerSubstring.length
+                                    endContainerStartPoint = line.getHtmlIndex(lineTextEndPoint - endContainerSubstring.length);
+                                    endContainerEndPoint = line.getHtmlIndex(lineTextEndPoint);
+                                    infillEndPoint = line.getHtmlIndex(lineTextEndPoint - 1) + 1;
                                 }
+
+                                // split the line into constituent substrings
+                                var leftUnselected = line.html.substring(0, startContainerStartPoint)
+                                  , startContainerSelected =  line.html.substring(startContainerStartPoint, startContainerEndPoint)
+                                  , startContainerTrailing = line.html.substring(startContainerEndPoint, infillStartPoint)
+                                  , infillSelected = openTag + line.html.substring(infillStartPoint, infillEndPoint) + closeTag
+                                  , endContainerLeading = line.html.substring(infillEndPoint, endContainerStartPoint)
+                                  , endContainerSelected = line.html.substring(endContainerStartPoint, endContainerEndPoint)
+                                  , rightUnselected = line.html.substring(endContainerEndPoint);
+
+                                if (startContainerSelected.length > 0) {
+                                    startContainerSelected = openTag + startContainerSelected + closeTag;
+                                }
+
+                                if (infillSelected.length > 0) {
+                                    infillSelected = openTag + infillSelected + closeTag;
+                                }
+
+                                if (endContainerSelected.length > 0) {
+                                    endContainerSelected = openTag + endContainerSelected + closeTag;
+                                }
+
+                                // sub out the old HTML for the highlighted HTML
+                                var highlightedContent = leftUnselected
+                                    + startContainerSelected
+                                    + startContainerTrailing
+                                    + infillSelected
+                                    + endContainerLeading
+                                    + endContainerSelected
+                                    + rightUnselected;
+                                element.html(highlightedContent);
                             } else {
                                 element.wrapInner(openTag + closeTag);
                             }
