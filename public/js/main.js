@@ -72,6 +72,99 @@ require([
             return htmlBaseIndex + (textIndex - baseIndex);
         };
 
+        var Selection = function () {
+            var self = this;
+            this.lines = {};
+            this.state = Selection.states.default;
+        };
+
+        Selection.states = {
+            default: 'default',
+            invalid: 'invalid',
+            active: 'active',
+            inactive: 'inactive'
+        };
+
+        Selection.prototype.addLine = function (line) {
+            if (this._addLine(line)) {
+                this.validate();
+            }
+        };
+
+        Selection.prototype.addLines = function (lines) {
+            var changed = false;
+
+            _.each(lines, function (line) {
+                changed = changed || this._addLine(line);
+            });
+
+            if (changed) {
+                this.validate();
+            }
+        };
+
+        Selection.prototype._addLine = function (line) {
+            if (!line) {
+                return false;
+            }
+
+            this.lines[line.row] = line;
+            return true;
+        };
+
+        Selection.prototype.removeLine = function (line) {
+            if (this._removeLine(line)) {
+                this.validate();
+            }
+        };
+
+        Selection.prototype.removeLines = function (lines) {
+            var changed = false;
+
+            _.each(lines, function (line) {
+                changed = changed || this._removeLine(line);
+            });
+
+            if (changed) {
+                this.validate();
+            }
+        };
+
+        Selection.prototype._removeLine = function (line) {
+            if (!line || !this.lines[line.row]) {
+                return false;
+            }
+
+            delete this.lines[line.row];
+            return true;
+        };
+
+        Selection.prototype.validate = function () {
+            this.state = this.isValid()
+                ? this.state
+                : this.invalid;
+        };
+
+        // Lets us know if selection is valid. Right now just a wrapper around isContiguous,
+        // but might have additional logic in the future.
+        Selection.prototype.isValid = function () {
+            return this.isContiguous();
+        };
+
+        Selection.prototype.isContiguous = function () {
+            var contiguous = true
+              , lastKey = null;
+
+            _.chain(this.lines).keys()
+                .sortBy(function (key) { return key; })
+                .each(function (key) {
+                    contiguous = contiguous && (!lastKey || key - lastKey == 1);
+                    lastKey = key;
+                });
+
+            return contiguous;
+        };
+
         $('pre .code').on('keyup mouseup', function (e) {
             var selection = null
               , range = null
@@ -83,6 +176,11 @@ require([
                 if (selection.rangeCount > 0) {
                     range = selection.getRangeAt(0);
 
+                    // skip if nothing was actually selected
+                    if (range.startContainer === range.endContainer && range.startOffset === range.endOffset) {
+                        return;
+                    }
+
                     // get full range of lines spanned
                     var startLine = $(range.startContainer).parents('.line').first()
                       , endLine = $(range.endContainer).parents('.line').first()
@@ -91,82 +189,7 @@ require([
 
                     lineRangeStart.nextUntil(lineRangeEnd)
                         .each(function (index, elt) {
-                            var element = $(elt)
-                              , line = new Line(element)
-                              , openTag = '<span class="comment-highlight">'
-                              , closeTag = '</span>';
-
-                            // line content can actually be a rather complex hierarchy of spans,
-                            // meaning two things:
-                            //     a) range offsets are relative to the sub-spans, not the lines
-                            //     b) range offsets become inaccurate once we look at raw HTML
-                            //        rather than text.
-                            // Therefore, if the .line and selection site are the same, we can
-                            // just wrap everything easy-peasy. If not, it gets a little hairy -
-                            // we must wrap the interior of the child element, as well as the
-                            // remainder in .line.
-
-                            if (element.get(0) === startLine.get(0) || element.get(0) === endLine.get(0)) {
-                                var startContainer = $(range.startContainer)
-                                  , endContainer = $(range.endContainer)
-                                  , lineTextStartPoint = 0
-                                  , lineTextEndPoint = line.text.length
-                                  , startContainerStartPoint = line.getHtmlIndex(0)
-                                  , startContainerEndPoint = line.getHtmlIndex(0)
-                                  , endContainerStartPoint = line.getHtmlIndex(line.text.length - 1) + 1
-                                  , endContainerEndPoint = line.getHtmlIndex(line.text.length - 1) + 1
-                                  , infillStartPoint = startContainerEndPoint
-                                  , infillEndPoint = endContainerStartPoint;
-
-                                if (element.get(0) === startLine.get(0)) {
-                                    var startContainerSubstring = startContainer.text().substring(range.startOffset);
-                                    lineTextStartPoint = line.text.indexOf(startContainerSubstring);
-                                    startContainerStartPoint = line.getHtmlIndex(lineTextStartPoint);
-                                    startContainerEndPoint = line.getHtmlIndex(lineTextStartPoint + startContainerSubstring.length - 1) + 1;
-                                    infillStartPoint = line.getHtmlIndex(lineTextStartPoint + startContainerSubstring.length);
-                                }
-
-                                if (element.get(0) === endLine.get(0)) {
-                                    var endContainerSubstring = endContainer.text().substring(0, range.endOffset);
-                                    lineTextEndPoint = line.text.indexOf(endContainerSubstring) + endContainerSubstring.length
-                                    endContainerStartPoint = line.getHtmlIndex(lineTextEndPoint - endContainerSubstring.length);
-                                    endContainerEndPoint = line.getHtmlIndex(lineTextEndPoint);
-                                    infillEndPoint = line.getHtmlIndex(lineTextEndPoint - 1) + 1;
-                                }
-
-                                // split the line into constituent substrings
-                                var leftUnselected = line.html.substring(0, startContainerStartPoint)
-                                  , startContainerSelected =  line.html.substring(startContainerStartPoint, startContainerEndPoint)
-                                  , startContainerTrailing = line.html.substring(startContainerEndPoint, infillStartPoint)
-                                  , infillSelected = openTag + line.html.substring(infillStartPoint, infillEndPoint) + closeTag
-                                  , endContainerLeading = line.html.substring(infillEndPoint, endContainerStartPoint)
-                                  , endContainerSelected = line.html.substring(endContainerStartPoint, endContainerEndPoint)
-                                  , rightUnselected = line.html.substring(endContainerEndPoint);
-
-                                if (startContainerSelected.length > 0) {
-                                    startContainerSelected = openTag + startContainerSelected + closeTag;
-                                }
-
-                                if (infillSelected.length > 0) {
-                                    infillSelected = openTag + infillSelected + closeTag;
-                                }
-
-                                if (endContainerSelected.length > 0) {
-                                    endContainerSelected = openTag + endContainerSelected + closeTag;
-                                }
-
-                                // sub out the old HTML for the highlighted HTML
-                                var highlightedContent = leftUnselected
-                                    + startContainerSelected
-                                    + startContainerTrailing
-                                    + infillSelected
-                                    + endContainerLeading
-                                    + endContainerSelected
-                                    + rightUnselected;
-                                element.html(highlightedContent);
-                            } else {
-                                element.wrapInner(openTag + closeTag);
-                            }
+                            $(elt).wrapInner('<span class="comment-highlight"></span>');
                         });
                 }
             }
