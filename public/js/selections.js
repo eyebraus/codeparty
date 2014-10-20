@@ -36,7 +36,11 @@ define([
 
             // make sure the active selection and index are correctly maintained
             if (this.activeSelection) {
-                this.activeSelection = this.activeSelection == selection ? null : this.activeSelection;
+                if (this.activeSelection === selection) {
+                    this.activeSelection.deactivate();
+                    this.activeSelection = null;
+                }
+
                 this.activeIndex = this.selections.indexOf(this.activeSelection);
             }
 
@@ -49,6 +53,14 @@ define([
             }
 
             return this.selectIndex(this.selections.indexOf(selection));
+        };
+
+        Selections.prototype.unselect = function () {
+            if (this.activeSelection) {
+                this.activeSelection.deactivate();
+                this.activeSelection = null;
+                this.activeIndex = -1;
+            }
         };
 
         Selections.prototype.selectPrevious = function () {
@@ -70,6 +82,7 @@ define([
                 }
 
                 this.activeSelection = this.selections[index];
+                this.activeSelection.activate();
                 this.activeIndex = index;
             } else {
                 this.activeSelection.deactivate();
@@ -78,6 +91,23 @@ define([
             }
 
             return true;
+        };
+
+        Selections.prototype.selectionForRow = function (row) {
+            var containingSelection = null
+              , self = this;
+
+            _.each(this.selections, function (selection) {
+                if (selection.hasLineAtRow(row)) {
+                    containingSelection = selection;
+                }
+            });
+
+            return containingSelection;
+        };
+
+        Selections.prototype.isActiveSelection = function (selection) {
+            return selection && this.activeSelection == selection;
         };
 
         return Selections;

@@ -22,10 +22,12 @@ define([
         };
 
         Selection.prototype.addLines = function (lines) {
-            var changed = false;
+            var self = this
+              , changed = false;
 
             _.each(lines, function (line) {
-                changed = changed || this._addLine(line);
+                var addResult = self._addLine(line);
+                changed = changed || addResult;
             });
 
             if (changed) {
@@ -49,10 +51,12 @@ define([
         };
 
         Selection.prototype.removeLines = function (lines) {
-            var changed = false;
+            var self = this
+              , changed = false;
 
             _.each(lines, function (line) {
-                changed = changed || this._removeLine(line);
+                var removeResult = self._removeLine(line);
+                changed = changed || removeResult;
             });
 
             if (changed) {
@@ -69,15 +73,21 @@ define([
             return true;
         };
 
+        Selection.prototype.hasLineAtRow = function (row) {
+            return _.has(this.lines, row);
+        };
+
         Selection.prototype.activate = function () {
             if (this.state !== Selection.states.invalid) {
                 this.state = Selection.states.active;
+                this._propagateState();
             }
         };
 
         Selection.prototype.deactivate = function () {
             if (this.state === Selection.states.active) {
                 this.state = Selection.states.inactive;
+                this._propagateState();
             }
         };
 
@@ -86,29 +96,34 @@ define([
 
             this.state = this.isValid()
                 ? this.state
-                : Line.states.invalid;
+                : Selection.states.invalid;
+
+            this._propagateState();
+        };
+
+        Selection.prototype._propagateState = function () {
+            var self = this;
 
             _.each(this.lines, function (line) {
                 switch (self.state) {
-                    case Selection.active:
+                    case Selection.states.active:
                         line.activate();
                         break;
 
-                    case Selection.inactive:
+                    case Selection.states.inactive:
                         line.deactivate();
                         break;
 
-                    case Selection.invalid:
+                    case Selection.states.invalid:
                         line.invalidate();
                         break;
                 }
             });
         };
 
-        // Lets us know if selection is valid. Right now just a wrapper around isContiguous,
-        // but might have additional logic in the future.
         Selection.prototype.isValid = function () {
             return this.isContiguous();
+            // return this.isContiguous() && this.hasMessage();
         };
 
         Selection.prototype.isContiguous = function () {
@@ -125,16 +140,22 @@ define([
             return contiguous;
         };
 
+        Selection.prototype.hasMessage = function () {
+            return this.message && typeof this.message === 'string' && this.message.length > 0;
+        };
+
         Selection.prototype.startRow = function () {
             return _.chain(this.lines).keys()
                 .sortBy(function (key) { return key; })
-                .first();
+                .first()
+                .value();
         };
 
         Selection.prototype.endRow = function () {
             return _.chain(this.lines).keys()
                 .sortBy(function (key) { return key; })
-                .last();
+                .last()
+                .value();
         };
 
         return Selection;
