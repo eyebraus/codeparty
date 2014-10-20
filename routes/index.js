@@ -9,25 +9,22 @@ module.exports = function (req, res) {
 
     var filename = req.query.name;
 
-    var Postprocessor = function () {
+    var LinewrapPostprocessor = function () {
         this.openSpanRegex = /<span(\s+([\w-]+="([^"\s]*\s*)+")?)*>/g
         this.closeSpanRegex = /<\/span>/g; 
     };
-    
+
     // perform postprocessing on highlight.js text
-    Postprocessor.prototype.process = function (text) {
+    LinewrapPostprocessor.prototype.process = function (text) {
         // wrap line numbers and content together
         var postprocessed = this.lineify(text.split(/\n/g), [], []);
         return _.reduce(postprocessed, function (fold, content) {
-            return {
-                line: fold.line + 1,
-                content: fold.content + '<div class="line"><div class="line-number">' + fold.line + '</div>' + content + '</div>'
-            };
-        }, { line: 1, content: '' }).content;
+            return fold + content;
+        }, '');
     };
 
     // correctly open or close unbalanced span tags due to multiline spans
-    Postprocessor.prototype.lineify = function (unprocessed, processed, openTags) {
+    LinewrapPostprocessor.prototype.lineify = function (unprocessed, processed, openTags) {
         if (unprocessed.length <= 0) {
             return processed;
         }
@@ -67,7 +64,7 @@ module.exports = function (req, res) {
         }
 
         // wrap line in line div
-        wrappedLine = '<div class="line-content">' + wrappedLine + '</div>';
+        wrappedLine = '<div class="line">' + wrappedLine + '</div>';
 
         nextUnprocessed = unprocessed.slice(1);
         nextProcessed = processed.concat([wrappedLine]);
@@ -75,7 +72,7 @@ module.exports = function (req, res) {
     };
 
     // finds all open span tags in a highlighted line of code
-    Postprocessor.prototype.findOpenTags = function (line, stack) {
+    LinewrapPostprocessor.prototype.findOpenTags = function (line, stack) {
         var openMatches = line.match(this.openSpanRegex)
           , closeMatches = line.match(this.closeSpanRegex)
           , firstOpenMatch = openMatches && openMatches.length > 0 ? openMatches[0] : null
@@ -105,6 +102,18 @@ module.exports = function (req, res) {
         }
     };
 
+    var LinenumberPostprocessor = function () {};
+
+    LinenumberPostprocessor.prototype.process = function (content) {
+        var lineNumbers = _.map(content.split(/\n/g), function (line, index) {
+            return '<div class="line-number">' + (index + 1) + "</div>";
+        });
+
+        return _.reduce(lineNumbers, function (fold, content) {
+            return fold + content;
+        }, '');
+    };
+
     fs.readFile(path.join(__dirname, '../data/' + filename),
         { encoding: 'utf-8' },
         function (err, data) {
@@ -119,12 +128,14 @@ module.exports = function (req, res) {
             // highlight the text and postprocess
             highlight.configure({ tabReplace: '    ' });
             var highlighted = highlight.highlightAuto(data).value
-              , content = new Postprocessor().process(highlighted);
+              , content = new LinewrapPostprocessor().process(highlighted)
+              , numbers = new LinenumberPostprocessor().process(highlighted);
 
             res.render('index', {
                 name: filename,
                 language: 'c++',
-                content: content
+                content: content,
+                numbers: numbers
             });
         });
 };
