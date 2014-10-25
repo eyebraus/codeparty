@@ -16,17 +16,19 @@ body
         overflow-y auto
     #app-body .code-content
         width auto
-        padding 0 16px 0 0
         overflow-x auto
     #app-body .code
         font-family monospace
     #app-body .line
         height 21px
+        padding 0 16px
+        border-top 1px solid rgba(255, 255, 255, 0.0)
+        border-bottom 1px solid rgba(255, 255, 255, 0.0)
     #app-body .line:hover
-        background rgba(120, 255, 120, 0.5)
+        border-top 1px solid rgba(160, 255, 160, 0.9)
+        border-bottom 1px solid rgba(160, 255, 160, 0.9)
     #app-body .line-numbers
         width 40px
-        margin 0 16px 0 0
         -webkit-user-select none
         -khtml-user-select none
         -moz-user-select none
@@ -35,7 +37,6 @@ body
     #app-body .line-number
         width 24px
         height 21px
-        margin 0 16px 0 0
         padding 0px 12px
         background rgba(247, 247, 255, 1.0)
         border-right 1px solid rgba(128, 128, 128, 0.4)
@@ -43,5 +44,7 @@ body
         font-size 14px
         text-align right
 
-    .comment-highlight
-        background rgba(80, 255, 80, 0.7)
+    .line.active-selection
+        background rgba(160, 255, 160, 0.9)
+    .line.inactive-selection
+        background rgba(210, 255, 210, 0.5)
