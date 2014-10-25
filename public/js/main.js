@@ -42,6 +42,9 @@ require([
                         selection.addLines(lines);
                         selections.addSelection(selection);
                         selections.select(selection);
+
+                        // remove the browser's current selection
+                        textSelection.removeAllRanges();
                     } else {
                         // nothing was highlighted, so try to detect a selection or unselection!
                         var line = $(range.startContainer).parents('.line').first()
